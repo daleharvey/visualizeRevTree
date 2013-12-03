@@ -1,15 +1,16 @@
 
 var CORS_PROXY = 'http://cors.io/';
 
-var done = function(){
-  status.innerHTML = "OK";
-};
+var exportWrapper = document.getElementById('export');
+var placeholder = document.getElementById('svgPlaceholder');
+var info = document.getElementById('info');
+var submit = document.getElementById('submit');
 
-var error = function(err){
-  status.innerHTML = "Can't visualize document due to error (error: " +
+var error = function(err) {
+  info.innerHTML = "Can't visualize document due to error (error: " +
     err.error + "; reason: " + err.reason + ")";
-  done();
-  return;
+  submit.removeAttribute('disabled');
+  exportWrapper.style.display = 'none';
 };
 
 function parseUrl(str) {
@@ -47,6 +48,11 @@ function formSubmitted(e) {
 
   e.preventDefault();
 
+  placeholder.innerHTML = '';
+  info.innerHTML = 'Loading ...';
+  exportWrapper.style.display = 'none';
+  submit.setAttribute('disabled', 'disabled');
+
   var url = parseUrl(document.getElementById('url').value);
 
   initDB(url.dbUrl, function(err, db) {
@@ -56,17 +62,20 @@ function formSubmitted(e) {
     }
 
     visualizeRevTree(db, url.doc, function(err, box) {
-      if(err) {
+
+      if (err) {
         return error(err);
       }
 
-      status.innerHTML = "OK";
       var svg = box.getElementsByTagName('svg')[0];
       svg.style.width = svg.getAttribute('viewBox').split(' ')[2] * 7 + 'px';
       svg.style.height = svg.getAttribute('viewBox').split(' ')[3] * 7 + 'px';
-      svg.style.border = '2px solid';
-      document.body.appendChild(box);
-      done();
+
+      placeholder.appendChild(box);
+      info.innerHTML = '';
+      exportWrapper.style.display = 'block';
+      submit.removeAttribute('disabled');
+
     });
   });
 }
@@ -92,11 +101,10 @@ function exportDocs(e) {
       console.log("Pouchdb format: ", "db.bulkDocs({docs:" +
                   JSON.stringify(docs) +
                   "}, {new_edits:false}, function(err, res){})");
-      done();
     });
   });
 
 }
 
 document.getElementById('form').addEventListener('submit', formSubmitted);
-document.getElementById('export').addEventListener('click', exportDocs);
+document.getElementById('exportButton').addEventListener('click', exportDocs);
