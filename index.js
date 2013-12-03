@@ -44,16 +44,14 @@ function initDB(dbUrl, callback) {
   });
 }
 
-function formSubmitted(e) {
-
-  e.preventDefault();
+function doVisualisation(urlStr) {
 
   placeholder.innerHTML = '';
   info.innerHTML = 'Loading ...';
   exportWrapper.style.display = 'none';
   submit.setAttribute('disabled', 'disabled');
 
-  var url = parseUrl(document.getElementById('url').value);
+  var url = parseUrl(urlStr);
 
   initDB(url.dbUrl, function(err, db) {
 
@@ -80,9 +78,7 @@ function formSubmitted(e) {
   });
 }
 
-function exportDocs(e) {
-
-  e.preventDefault();
+function exportDocs() {
 
   var url = parseUrl(document.getElementById('url').value);
 
@@ -103,8 +99,25 @@ function exportDocs(e) {
                   "}, {new_edits:false}, function(err, res){})");
     });
   });
-
 }
 
-document.getElementById('form').addEventListener('submit', formSubmitted);
+function parseArgs() {
+  var query = location.search.substr(1);
+  var data = query.split("&");
+  var result = {};
+  for(var i = 0; i < data.length; i++) {
+    var item = data[i].split("=");
+    result[item[0]] = decodeURIComponent(item[1]);
+  }
+  return result;
+}
+
 document.getElementById('exportButton').addEventListener('click', exportDocs);
+
+var args = parseArgs();
+if (args.url) {
+  // Browsers are stupid and add a / to the end of the query param
+  var url = args.url.substring(0, args.url.length - 1);
+  document.getElementById('url').value = url;
+  doVisualisation(url);
+}
