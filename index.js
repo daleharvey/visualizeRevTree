@@ -1,10 +1,5 @@
 
-var $ = function(id){ return document.getElementById(id); };
-var urlInput = $('url');
-var docIdInput = $('docId');
-var submitButton = $('submit');
-var origVal = submitButton.value;
-var status = $('status');
+var CORS_PROXY = 'http://cors.io/';
 
 var done = function(){
   status.innerHTML = "OK";
@@ -17,34 +12,50 @@ var error = function(err){
   return;
 };
 
-var initDB = function(callback) {
+function parseUrl(str) {
 
-  if (!urlInput.value)
-    return alert('Fill in the forms, please!');
+  var url = document.createElement('a');
+  url.href = str;
+  var path = url.pathname.split('/');
 
-  status.innerHTML = "working";
-  var url = urlInput.value.replace(/^\s+|\s+$/g, '')
-  var docId = docIdInput.value;
-  var corsProxy = 'http://cors.io/';
+  // Remove '' cause by preceeding /
+  path.shift();
 
-  name = corsProxy + url.replace(/^https?:\/\//, '');
+  url.db = path.shift();
+  url.doc = path.join('/');
 
-  new Pouch(name, function(err, db) {
-    callback(err, db, docId);
+  url.dbUrl = url.protocol + '//' + url.hostname + '/' + url.db;
+
+  return url;
+}
+
+function initDB(dbUrl, callback) {
+
+  new Pouch(dbUrl, function(err, db) {
+
+    // Likely a CORS problem
+    if (err && err.status === 0) {
+      dbUrl = CORS_PROXY + dbUrl.replace(/^https?:\/\//, '');
+      return new Pouch(dbUrl, callback);
+    }
+
+    callback(err, db);
   });
-};
+}
 
-$('form').onsubmit = function(e) {
+function formSubmitted(e) {
 
   e.preventDefault();
 
-  initDB(function(err, db, docId) {
+  var url = parseUrl(document.getElementById('url').value);
 
-    if(err) {
+  initDB(url.dbUrl, function(err, db) {
+
+    if (err) {
       return error(err);
     }
 
-    visualizeRevTree(db, docId, function(err, box){
+    visualizeRevTree(db, url.doc, function(err, box) {
       if(err) {
         return error(err);
       }
@@ -58,12 +69,21 @@ $('form').onsubmit = function(e) {
       done();
     });
   });
-  return false;
-};
+}
 
-$('export').onclick = function(){
-  initDB(function(err, db, docId) {
-    db.get(docId, {revs: true, open_revs: "all"}, function(err, results) {
+function exportDocs(e) {
+
+  e.preventDefault();
+
+  var url = parseUrl(document.getElementById('url').value);
+
+  initDB(url.dbUrl, function(err, db) {
+
+    if (err) {
+      return error(err);
+    }
+
+    db.get(url.doc, {revs: true, open_revs: "all"}, function(err, results) {
       var docs = [];
       results.forEach(function(row){
         docs.push(row.ok);
@@ -75,4 +95,8 @@ $('export').onclick = function(){
       done();
     });
   });
-};
+
+}
+
+document.getElementById('form').addEventListener('submit', formSubmitted);
+document.getElementById('export').addEventListener('click', exportDocs);
