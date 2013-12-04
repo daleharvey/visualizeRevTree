@@ -80,11 +80,13 @@ var visualizeRevTree = function(db, docId, callback) {
     var allRevs = [];
 
     db.get(docId, function(err, doc){ // get winning revision here
-      if (err) {
+      if (err && err.reason !== 'deleted') {
         callback(err);
         return;
       }
-      winner = doc._rev;
+      if (doc) {
+        winner = doc._rev;
+      }
       db.get(docId, {revs: true, open_revs: "all"}, function(err, results){
         if(err){
           callback(err);
